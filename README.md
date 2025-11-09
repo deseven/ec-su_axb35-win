@@ -50,7 +50,7 @@ The server loads configuration from `%SYSTEMDRIVE%\ProgramData\ec-su_axb35-win\c
 - **GET** `/metrics` - Get combined monitoring data (power mode, temperature, all fan data)
 
 #### APU Power Mode
-- **GET/POST** `/apu/power-mode` - Get or set current power mode (balanced/performance/quiet)
+- **GET/POST** `/apu/power_mode` - Get or set current power mode (balanced/performance/quiet)
 - **GET** `/apu/temp` - Get APU temperature
 
 #### Fan Control (X = 1, 2, or 3)
@@ -60,39 +60,9 @@ The server loads configuration from `%SYSTEMDRIVE%\ProgramData\ec-su_axb35-win\c
 - **GET/POST** `/fanX/rampup_curve` - Get or set fan rampup curve (5 temperature thresholds) for `curve` mode
 - **GET/POST** `/fanX/rampdown_curve` - Get or set fan rampdown curve (5 temperature thresholds) for `curve` mode
 
+#### OpenAPI Specs
 
-## Example API Usage
-
-**Get Combined Metrics:**
-```bash
-curl http://127.0.0.1:8395/metrics
-```
-
-**Set APU Power Mode:**
-```bash
-curl -X POST http://127.0.0.1:8395/apu/power-mode \
-  -H "Content-Type: application/json" \
-  -d '{"power_mode": "performance"}'
-```
-
-**Set Fan1 to Curve Mode:**
-```bash
-curl -X POST http://127.0.0.1:8395/fan1/mode \
-  -H "Content-Type: application/json" \
-  -d '{"mode": "curve"}'
-```
-
-**Get Fan1 Rampup Curve:**
-```bash
-curl http://127.0.0.1:8395/fan1/rampup_curve
-```
-
-**Set Fan1 Rampup Curve:**
-```bash
-curl -X POST http://127.0.0.1:8395/fan1/rampup_curve \
-  -H "Content-Type: application/json" \
-  -d '{"curve": [55, 65, 75, 85, 95]}'
-```
+There are [OpenAPI specifications available in the repo](https://raw.githubusercontent.com/deseven/ec-su_axb35-win/refs/heads/main/server/openapi.yaml) with full route descriptions and request/response examples. You can simply copy the URL and import it in [the Swagger Editor](https://editor.swagger.io/) or any other OpenAPI-compatible editor/viewer.
 
 
 ## Curve Fan Mode

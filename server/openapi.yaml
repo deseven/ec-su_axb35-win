@@ -1,0 +1,689 @@
+openapi: 3.0.3
+info:
+  title: EC-SU AXB35 Server API
+  description: |
+    A Windows control & monitoring solution for the onboard Embedded Controller (EC) on Sixunited's SU_AXB35 boards.
+    
+    ## Features
+    - **Full EC functionality**: Fan control (auto/fixed/curve) and monitoring, power control (3 standard presets), APU temperature reading
+    - **HTTP REST API**: All requests and responses use JSON format
+    - **Runs as a system service**: Very low memory footprint, doesn't do anything unless asked
+    - **Client is optional**: Running a GUI monitoring/configuration tool is not required
+    
+    ## Safety & Implementation Notes
+    - All EC operations are performed synchronously one by one
+    - The server will exit if it cannot access the EC or load the required driver
+    - All states are being kept on the server side in its config and re-applied on start
+    - HTTP REST API does not have any authorization implemented
+    
+    ## Error Handling
+    The server returns appropriate HTTP status codes:
+    - `200 OK` - Successful operation
+    - `400 Bad Request` - Invalid request data
+    - `500 Internal Server Error` - EC communication or server error
+    
+    All error responses include a JSON object with an `error` field describing the issue.
+  version: 1.0.0
+  contact:
+    name: GitHub Repository
+    url: https://github.com/deseven/ec-su_axb35-win
+
+servers:
+  - url: http://127.0.0.1:8395
+    description: Default local server
+
+paths:
+  /status:
+    get:
+      tags: [Status]
+      summary: Get EC firmware version and status
+      description: Returns the current status of the EC controller and firmware version information
+      operationId: getStatus
+      responses:
+        '200':
+          description: EC status retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+              examples:
+                success:
+                  summary: Successful status check
+                  value:
+                    status: 1
+                    version: "1.04"
+                failure:
+                  summary: Failed status check
+                  value:
+                    status: 0
+                    version: null
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /metrics:
+    get:
+      tags: [Status]
+      summary: Get combined monitoring data
+      description: Returns comprehensive monitoring data including power mode, temperature, and all fan data
+      operationId: getMetrics
+      responses:
+        '200':
+          description: Metrics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetricsResponse'
+              example:
+                power_mode: "balanced"
+                temperature: 65
+                fan1:
+                  mode: "curve"
+                  level: 3
+                  rpm: 2400
+                  rampup_curve: [60, 70, 83, 95, 97]
+                  rampdown_curve: [40, 50, 80, 94, 96]
+                fan2:
+                  mode: "auto"
+                  level: 2
+                  rpm: 1800
+                  rampup_curve: [60, 70, 83, 95, 97]
+                  rampdown_curve: [40, 50, 80, 94, 96]
+                fan3:
+                  mode: "fixed"
+                  level: 1
+                  rpm: 1200
+                  rampup_curve: [20, 60, 83, 95, 97]
+                  rampdown_curve: [0, 50, 80, 94, 96]
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /apu/power_mode:
+    get:
+      tags: [APU]
+      summary: Get current APU power mode
+      description: Returns the current power mode setting (balanced/performance/quiet)
+      operationId: getApuPowerMode
+      responses:
+        '200':
+          description: Power mode retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PowerModeResponse'
+              example:
+                power_mode: "balanced"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    
+    post:
+      tags: [APU]
+      summary: Set APU power mode
+      description: Sets the APU power mode to one of the available presets
+      operationId: setApuPowerMode
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PowerModeRequest'
+            example:
+              power_mode: "performance"
+      responses:
+        '200':
+          description: Power mode set successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PowerModeResponse'
+        '400':
+          description: Invalid power mode
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /apu/temp:
+    get:
+      tags: [APU]
+      summary: Get APU temperature
+      description: Returns the current APU temperature in Celsius
+      operationId: getApuTemperature
+      responses:
+        '200':
+          description: Temperature retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemperatureResponse'
+              example:
+                temperature: 65
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /fan{fanId}/rpm:
+    get:
+      tags: [Fans]
+      summary: Get fan RPM
+      description: Returns the current RPM of the specified fan
+      operationId: getFanRpm
+      parameters:
+        - $ref: '#/components/parameters/FanId'
+      responses:
+        '200':
+          description: Fan RPM retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FanRpmResponse'
+              example:
+                rpm: 2400
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /fan{fanId}/mode:
+    get:
+      tags: [Fans]
+      summary: Get fan mode
+      description: Returns the current mode of the specified fan (auto/fixed/curve)
+      operationId: getFanMode
+      parameters:
+        - $ref: '#/components/parameters/FanId'
+      responses:
+        '200':
+          description: Fan mode retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FanModeResponse'
+              example:
+                mode: "curve"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    
+    post:
+      tags: [Fans]
+      summary: Set fan mode
+      description: Sets the mode of the specified fan
+      operationId: setFanMode
+      parameters:
+        - $ref: '#/components/parameters/FanId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FanModeRequest'
+            example:
+              mode: "curve"
+      responses:
+        '200':
+          description: Fan mode set successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FanModeResponse'
+        '400':
+          description: Invalid fan mode
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /fan{fanId}/level:
+    get:
+      tags: [Fans]
+      summary: Get fan level
+      description: Returns the current level of the specified fan (0-5) for fixed mode
+      operationId: getFanLevel
+      parameters:
+        - $ref: '#/components/parameters/FanId'
+      responses:
+        '200':
+          description: Fan level retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FanLevelResponse'
+              example:
+                level: 3
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    
+    post:
+      tags: [Fans]
+      summary: Set fan level
+      description: Sets the level of the specified fan (0-5) for fixed mode
+      operationId: setFanLevel
+      parameters:
+        - $ref: '#/components/parameters/FanId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FanLevelRequest'
+            example:
+              level: 3
+      responses:
+        '200':
+          description: Fan level set successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FanLevelResponse'
+        '400':
+          description: Invalid fan level (must be 0-5)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /fan{fanId}/rampup_curve:
+    get:
+      tags: [Fans]
+      summary: Get fan rampup curve
+      description: Returns the rampup curve (5 temperature thresholds) for the specified fan in curve mode
+      operationId: getFanRampupCurve
+      parameters:
+        - $ref: '#/components/parameters/FanId'
+      responses:
+        '200':
+          description: Fan rampup curve retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FanCurveResponse'
+              example:
+                curve: [60, 70, 83, 95, 97]
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    
+    post:
+      tags: [Fans]
+      summary: Set fan rampup curve
+      description: Sets the rampup curve (5 temperature thresholds) for the specified fan in curve mode
+      operationId: setFanRampupCurve
+      parameters:
+        - $ref: '#/components/parameters/FanId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FanCurveRequest'
+            example:
+              curve: [55, 65, 75, 85, 95]
+      responses:
+        '200':
+          description: Fan rampup curve set successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FanCurveResponse'
+        '400':
+          description: Invalid curve values (must be 0-100°C)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /fan{fanId}/rampdown_curve:
+    get:
+      tags: [Fans]
+      summary: Get fan rampdown curve
+      description: Returns the rampdown curve (5 temperature thresholds) for the specified fan in curve mode
+      operationId: getFanRampdownCurve
+      parameters:
+        - $ref: '#/components/parameters/FanId'
+      responses:
+        '200':
+          description: Fan rampdown curve retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FanCurveResponse'
+              example:
+                curve: [40, 50, 80, 94, 96]
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    
+    post:
+      tags: [Fans]
+      summary: Set fan rampdown curve
+      description: Sets the rampdown curve (5 temperature thresholds) for the specified fan in curve mode
+      operationId: setFanRampdownCurve
+      parameters:
+        - $ref: '#/components/parameters/FanId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FanCurveRequest'
+            example:
+              curve: [35, 45, 70, 84, 94]
+      responses:
+        '200':
+          description: Fan rampdown curve set successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FanCurveResponse'
+        '400':
+          description: Invalid curve values (must be 0-100°C)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  parameters:
+    FanId:
+      name: fanId
+      in: path
+      required: true
+      description: Fan identifier (1, 2, or 3)
+      schema:
+        type: integer
+        enum: [1, 2, 3]
+        example: 1
+
+  schemas:
+    StatusResponse:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: integer
+          description: Status code (1 = success, 0 = failure)
+          enum: [0, 1]
+          example: 1
+        version:
+          type: string
+          nullable: true
+          description: EC firmware version (null if status is 0)
+          pattern: '^\d+\.\d+$'
+          example: "1.04"
+
+    PowerModeResponse:
+      type: object
+      required:
+        - power_mode
+      properties:
+        power_mode:
+          type: string
+          description: Current APU power mode
+          enum: ["balanced", "performance", "quiet"]
+          example: "balanced"
+
+    PowerModeRequest:
+      type: object
+      required:
+        - power_mode
+      properties:
+        power_mode:
+          type: string
+          description: APU power mode to set
+          enum: ["balanced", "performance", "quiet"]
+          example: "performance"
+
+    TemperatureResponse:
+      type: object
+      required:
+        - temperature
+      properties:
+        temperature:
+          type: integer
+          description: APU temperature in Celsius
+          minimum: 0
+          maximum: 100
+          example: 65
+
+    FanRpmResponse:
+      type: object
+      required:
+        - rpm
+      properties:
+        rpm:
+          type: integer
+          description: Fan RPM (revolutions per minute)
+          minimum: 0
+          maximum: 65535
+          example: 2400
+
+    FanModeResponse:
+      type: object
+      required:
+        - mode
+      properties:
+        mode:
+          type: string
+          description: Current fan mode
+          enum: ["auto", "fixed", "curve"]
+          example: "curve"
+
+    FanModeRequest:
+      type: object
+      required:
+        - mode
+      properties:
+        mode:
+          type: string
+          description: Fan mode to set
+          enum: ["auto", "fixed", "curve"]
+          example: "curve"
+
+    FanLevelResponse:
+      type: object
+      required:
+        - level
+      properties:
+        level:
+          type: integer
+          description: Current fan level (0=off, 1=20%, 2=40%, 3=60%, 4=80%, 5=100%)
+          minimum: 0
+          maximum: 5
+          example: 3
+
+    FanLevelRequest:
+      type: object
+      required:
+        - level
+      properties:
+        level:
+          type: integer
+          description: Fan level to set (0=off, 1=20%, 2=40%, 3=60%, 4=80%, 5=100%)
+          minimum: 0
+          maximum: 5
+          example: 3
+
+    FanCurveResponse:
+      type: object
+      required:
+        - curve
+      properties:
+        curve:
+          type: array
+          description: Temperature curve with 5 thresholds in Celsius
+          items:
+            type: integer
+            minimum: 0
+            maximum: 100
+          minItems: 5
+          maxItems: 5
+          example: [60, 70, 83, 95, 97]
+
+    FanCurveRequest:
+      type: object
+      required:
+        - curve
+      properties:
+        curve:
+          type: array
+          description: Temperature curve with 5 thresholds in Celsius
+          items:
+            type: integer
+            minimum: 0
+            maximum: 100
+          minItems: 5
+          maxItems: 5
+          example: [55, 65, 75, 85, 95]
+
+    FanMetrics:
+      type: object
+      required:
+        - mode
+        - level
+        - rpm
+        - rampup_curve
+        - rampdown_curve
+      properties:
+        mode:
+          type: string
+          description: Current fan mode
+          enum: ["auto", "fixed", "curve"]
+          example: "curve"
+        level:
+          type: integer
+          description: Current fan level (0=off, 1=20%, 2=40%, 3=60%, 4=80%, 5=100%)
+          minimum: 0
+          maximum: 5
+          example: 3
+        rpm:
+          type: integer
+          description: Current fan RPM
+          minimum: 0
+          maximum: 65535
+          example: 2400
+        rampup_curve:
+          type: array
+          description: Rampup temperature curve with 5 thresholds in Celsius
+          items:
+            type: integer
+            minimum: 0
+            maximum: 100
+          minItems: 5
+          maxItems: 5
+          example: [60, 70, 83, 95, 97]
+        rampdown_curve:
+          type: array
+          description: Rampdown temperature curve with 5 thresholds in Celsius
+          items:
+            type: integer
+            minimum: 0
+            maximum: 100
+          minItems: 5
+          maxItems: 5
+          example: [40, 50, 80, 94, 96]
+
+    MetricsResponse:
+      type: object
+      required:
+        - power_mode
+        - temperature
+        - fan1
+        - fan2
+        - fan3
+      properties:
+        power_mode:
+          type: string
+          description: Current APU power mode
+          enum: ["balanced", "performance", "quiet"]
+          example: "balanced"
+        temperature:
+          type: integer
+          description: Current APU temperature in Celsius
+          minimum: 0
+          maximum: 100
+          example: 65
+        fan1:
+          $ref: '#/components/schemas/FanMetrics'
+        fan2:
+          $ref: '#/components/schemas/FanMetrics'
+        fan3:
+          $ref: '#/components/schemas/FanMetrics'
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: Error message describing what went wrong
+          example: "Invalid power mode: invalid"
+
+tags:
+  - name: Status
+    description: EC controller status and firmware information
+  - name: APU
+    description: APU power management and temperature monitoring
+  - name: Fans
+    description: Fan control and monitoring operations
