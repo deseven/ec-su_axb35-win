@@ -1,6 +1,6 @@
 # ec-su_abx35-win
 
-A Windows control & monitoring solution for the onboard Embedded Controller (EC) on Sixunited's SU_AXB35 boards. A distant relative of [ec-su_axb35-linux](https://github.com/cmetz/ec-su_axb35-linux), consists of a server and a GUI client (not yet available).
+A Windows control & monitoring solution for the onboard Embedded Controller (EC) on [Sixunited's SU_AXB35 boards](https://strixhalo-homelab.d7.wtf/Hardware/Boards/Sixunited-AXB35). A distant relative of [ec-su_axb35-linux](https://github.com/cmetz/ec-su_axb35-linux), consists of a server and a GUI client (not yet available). The latest stable version is always available in [Releases](https://github.com/deseven/ec-su_axb35-win/releases).
 
 The whole thing would've been impossible without the work done in [NoteBook FanControl](https://github.com/hirschmann/nbfc) and [WinRing0 library](https://github.com/GermanAizek/WinRing0).
 
@@ -21,7 +21,7 @@ The whole thing would've been impossible without the work done in [NoteBook FanC
 - Disabled Secure Boot for WinRing0 driver loading
 
 
-## Configuration
+## Configuration & Logging
 
 The server loads configuration from `%SYSTEMDRIVE%\ProgramData\ec-su_axb35-win\config.json`. If the file doesn't exist, it will be created with default values:
 
@@ -33,6 +33,12 @@ The server loads configuration from `%SYSTEMDRIVE%\ProgramData\ec-su_axb35-win\c
   "driver_path": "C:\\ProgramData\\ec-su_axb35-win\\winring0"
 }
 ```
+
+The server logs all operations with timestamps to:
+- Standard output (if run in a console)
+- Log file defined in the config
+
+The log file is overwritten on each server restart.
 
 
 ## Safety & Implementation Notes
@@ -90,25 +96,6 @@ The curve fan mode provides automatic fan speed control based on APU temperature
 3. Server automatically monitors APU temperature every second
 4. Fan levels adjust based on temperature crossing the configured thresholds
 5. All curve settings are saved to config and restored on server restart
-
-
-## Error Handling
-
-The server returns appropriate HTTP status codes:
-- `200 OK` - Successful operation
-- `400 Bad Request` - Invalid request data
-- `500 Internal Server Error` - EC communication or server error
-
-All error responses include a JSON object with an `error` field describing the issue.
-
-
-## Logging
-
-The server logs all operations with timestamps to:
-- Standard output (if run in a console)
-- Log file at `%SYSTEMDRIVE%\ProgramData\ec-su_axb35-win\server.log`
-
-The log file is overwritten on each server restart.
 
 
 ## Testing
