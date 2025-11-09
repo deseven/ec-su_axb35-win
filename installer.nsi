@@ -1,8 +1,7 @@
 ; ec-su_axb35-win Installer
-; NSIS Script for installing the EC-SU AXB35 server as a Windows service
 
 !define PRODUCT_NAME "ec-su_axb35-win"
-!define PRODUCT_VERSION "1.0.0"
+!define PRODUCT_VERSION "1.1.0"
 !define PRODUCT_PUBLISHER "deseven"
 !define PRODUCT_WEB_SITE "https://github.com/deseven/ec-su_axb35-win"
 !define PRODUCT_DIR_REGKEY "Software\Microsoft\Windows\CurrentVersion\App Paths\ec-su_axb35-server.exe"
@@ -36,7 +35,10 @@
 !insertmacro MUI_PAGE_DIRECTORY
 ; Instfiles page
 !insertmacro MUI_PAGE_INSTFILES
-; No finish page - remain on install log page so user can read the output
+; Finish page with option to run client
+!define MUI_FINISHPAGE_RUN "$INSTDIR\ec-su_axb35-win-client.exe"
+!define MUI_FINISHPAGE_RUN_TEXT "Run EC SU_AXB35 Client"
+!insertmacro MUI_PAGE_FINISH
 
 ; Uninstaller pages
 !insertmacro MUI_UNPAGE_INSTFILES
@@ -60,7 +62,7 @@ RequestExecutionLevel admin
 ; Version Information
 VIProductVersion "1.0.0.0"
 VIAddVersionKey "ProductName" "${PRODUCT_NAME}"
-VIAddVersionKey "Comments" "EC-SU AXB35 WIN Installer"
+VIAddVersionKey "Comments" "EC SU_AXB35 WIN Installer"
 VIAddVersionKey "CompanyName" "${PRODUCT_PUBLISHER}"
 VIAddVersionKey "LegalTrademarks" ""
 VIAddVersionKey "LegalCopyright" "© ${PRODUCT_PUBLISHER}"
@@ -93,6 +95,18 @@ Function StopExistingService
     DetailPrint "Stopping existing service..."
     nsExec::ExecToLog 'sc stop "${SERVICE_NAME}"'
     Sleep 3000 ; Wait 3 seconds for service to stop
+  ${EndIf}
+FunctionEnd
+
+Function KillExistingClientProcess
+  DetailPrint "Checking for existing client process..."
+  
+  ; Kill any running client processes
+  nsExec::ExecToLog 'taskkill /F /IM ec-su_axb35-win-client.exe'
+  Pop $0
+  ${If} $0 == 0
+    DetailPrint "Existing client process terminated"
+    Sleep 1000 ; Wait 1 second
   ${EndIf}
 FunctionEnd
 
@@ -139,6 +153,9 @@ Section "MainSection" SEC01
   ; Stop existing service if running
   Call StopExistingService
   
+  ; Kill existing client process if running
+  Call KillExistingClientProcess
+  
   ; Create installation directory
   SetOutPath "$INSTDIR"
   SetOverwrite ifnewer
@@ -146,6 +163,10 @@ Section "MainSection" SEC01
   ; Install server binary
   DetailPrint "Installing server binary..."
   File "server\target\release\ec-su_axb35-server.exe"
+  
+  ; Install client binary
+  DetailPrint "Installing client binary..."
+  File "client\target\release\ec-su_axb35-win-client.exe"
   
   ; Create winring0 directory and install files
   DetailPrint "Installing WinRing0 drivers..."
@@ -173,6 +194,7 @@ Section -AdditionalIcons
   SetOutPath $INSTDIR
   WriteIniStr "$INSTDIR\${PRODUCT_NAME}.url" "InternetShortcut" "URL" "${PRODUCT_WEB_SITE}"
   CreateDirectory "$SMPROGRAMS\${PRODUCT_NAME}"
+  CreateShortCut "$SMPROGRAMS\${PRODUCT_NAME}\EC SU_AXB35 Client.lnk" "$INSTDIR\ec-su_axb35-win-client.exe"
   CreateShortCut "$SMPROGRAMS\${PRODUCT_NAME}\Website.lnk" "$INSTDIR\${PRODUCT_NAME}.url"
   CreateShortCut "$SMPROGRAMS\${PRODUCT_NAME}\Uninstall.lnk" "$INSTDIR\uninst.exe"
 SectionEnd
@@ -219,10 +241,15 @@ Section Uninstall
   nsExec::ExecToLog 'sc delete "${SERVICE_NAME}"'
   Sleep 1000
   
+  ; Kill client process if running before uninstall
+  nsExec::ExecToLog 'taskkill /F /IM ec-su_axb35-win-client.exe'
+  Sleep 1000
+  
   ; Remove files
   Delete "$INSTDIR\${PRODUCT_NAME}.url"
   Delete "$INSTDIR\uninst.exe"
   Delete "$INSTDIR\ec-su_axb35-server.exe"
+  Delete "$INSTDIR\ec-su_axb35-win-client.exe"
   
   ; Remove winring0 files
   Delete "$APPDATA\ec-su_axb35-win\winring0\WinRing0.sys"
@@ -237,6 +264,7 @@ Section Uninstall
   RMDir "$APPDATA\ec-su_axb35-win"
   
   ; Remove shortcuts
+  Delete "$SMPROGRAMS\${PRODUCT_NAME}\EC SU_AXB35 Client.lnk"
   Delete "$SMPROGRAMS\${PRODUCT_NAME}\Uninstall.lnk"
   Delete "$SMPROGRAMS\${PRODUCT_NAME}\Website.lnk"
   RMDir "$SMPROGRAMS\${PRODUCT_NAME}"

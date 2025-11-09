@@ -1,4 +1,6 @@
 # Rust build artifacts
+client/target/
+client/Cargo.lock
 server/target/
 server/Cargo.lock
 ec-probe-poc/target/

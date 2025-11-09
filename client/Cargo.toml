@@ -1,0 +1,27 @@
+[package]
+name = "ec-su_axb35-win-client"
+version = "1.1.0"
+edition = "2021"
+
+[dependencies]
+egui = "0.33"
+eframe = { version = "0.33", default-features = false, features = [
+    "default_fonts",
+    "glow",
+    "persistence",
+] }
+reqwest = { version = "0.12", features = ["json"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1.0", features = ["full"] }
+winit = "0.30"
+dirs = "5.0"
+anyhow = "1.0"
+image = "0.25"
+
+[build-dependencies]
+winres = "0.1"
+
+[target.'cfg(windows)'.dependencies]
+winapi = { version = "0.3", features = ["winuser", "shellapi"] }
+

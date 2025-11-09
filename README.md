@@ -1,6 +1,6 @@
 # ec-su_abx35-win
 
-A Windows control & monitoring solution for the onboard Embedded Controller (EC) on [Sixunited's SU_AXB35 boards](https://strixhalo-homelab.d7.wtf/Hardware/Boards/Sixunited-AXB35). A distant relative of [ec-su_axb35-linux](https://github.com/cmetz/ec-su_axb35-linux), consists of a server and a GUI client (not yet available). The latest stable version is always available in [Releases](https://github.com/deseven/ec-su_axb35-win/releases).
+A Windows control & monitoring solution for the onboard Embedded Controller (EC) on [Sixunited's SU_AXB35 boards](https://strixhalo-homelab.d7.wtf/Hardware/Boards/Sixunited-AXB35). A distant relative of [ec-su_axb35-linux](https://github.com/cmetz/ec-su_axb35-linux), consists of a server and a GUI client. The latest stable version is always available in [Releases](https://github.com/deseven/ec-su_axb35-win/releases).
 
 The whole thing would've been impossible without the work done in [NoteBook FanControl](https://github.com/hirschmann/nbfc) and [WinRing0 library](https://github.com/GermanAizek/WinRing0).
 
@@ -20,6 +20,10 @@ The whole thing would've been impossible without the work done in [NoteBook FanC
 - Administrator privileges for installation
 - Disabled Secure Boot for WinRing0 driver loading
 
+
+## Usage
+
+In general you should need to worry about anything below that line, just download the installer, run it and follow the instructions. The GUI client allows you to monitor and edit all of the needed parameters, everything else is for advanced users.
 
 ## Configuration & Logging
 
