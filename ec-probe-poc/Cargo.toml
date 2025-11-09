@@ -1,0 +1,7 @@
+[package]
+name = "ec-probe-rust"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+winapi = { version = "0.3", features = ["winnt", "winerror", "handleapi", "fileapi", "ioapiset", "minwinbase", "errhandlingapi", "winsvc", "winbase"] }

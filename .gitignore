@@ -1,0 +1,24 @@
+# Rust build artifacts
+server/target/
+server/Cargo.lock
+ec-probe-poc/target/
+ec-probe-poc/Cargo.lock
+
+# Executable files
+*.exe
+*.pdb
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbss.db
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
