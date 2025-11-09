@@ -1,8 +1,8 @@
-; EC-SU AXB35 Server Installer
+; ec-su_axb35-win Installer
 ; NSIS Script for installing the EC-SU AXB35 server as a Windows service
 
 !define PRODUCT_NAME "ec-su_axb35-win"
-!define PRODUCT_VERSION "0.0.0"
+!define PRODUCT_VERSION "1.0.0"
 !define PRODUCT_PUBLISHER "deseven"
 !define PRODUCT_WEB_SITE "https://github.com/deseven/ec-su_axb35-win"
 !define PRODUCT_DIR_REGKEY "Software\Microsoft\Windows\CurrentVersion\App Paths\ec-su_axb35-server.exe"
@@ -36,8 +36,7 @@
 !insertmacro MUI_PAGE_DIRECTORY
 ; Instfiles page
 !insertmacro MUI_PAGE_INSTFILES
-; Finish page
-!insertmacro MUI_PAGE_FINISH
+; No finish page - remain on install log page so user can read the output
 
 ; Uninstaller pages
 !insertmacro MUI_UNPAGE_INSTFILES
