@@ -4,6 +4,8 @@ A Windows control & monitoring solution for the onboard Embedded Controller (ITE
 
 The whole thing would've been impossible without the work done in [NoteBook FanControl](https://github.com/hirschmann/nbfc) and [WinRing0 library](https://github.com/GermanAizek/WinRing0).
 
+![ec-su_axb35-win-client](https://d7.wtf/s/ec-su_axb35-win-client.png)
+
 
 ## Features
 

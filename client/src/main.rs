@@ -7,6 +7,7 @@ use image::GenericImageView;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use tokio::time::interval;
@@ -145,11 +146,55 @@ struct ColorThresholds {
 impl Default for ColorThresholds {
     fn default() -> Self {
         Self {
-            temp_green: 60,
-            temp_yellow: 75,
-            rpm_green: 1500,
-            rpm_yellow: 2500,
+            temp_green: 50,
+            temp_yellow: 80,
+            rpm_green: 1200,
+            rpm_yellow: 2600,
         }
+    }
+}
+
+// Historical data for charts
+const CHART_HISTORY_SIZE: usize = 60; // Keep 60 data points
+
+#[derive(Clone)]
+struct ChartData {
+    temperature_history: VecDeque<i32>,
+    fan1_rpm_history: VecDeque<i32>,
+    fan2_rpm_history: VecDeque<i32>,
+    fan3_rpm_history: VecDeque<i32>,
+}
+
+impl ChartData {
+    fn new() -> Self {
+        Self {
+            temperature_history: VecDeque::with_capacity(CHART_HISTORY_SIZE),
+            fan1_rpm_history: VecDeque::with_capacity(CHART_HISTORY_SIZE),
+            fan2_rpm_history: VecDeque::with_capacity(CHART_HISTORY_SIZE),
+            fan3_rpm_history: VecDeque::with_capacity(CHART_HISTORY_SIZE),
+        }
+    }
+    
+    fn add_data_point(&mut self, temp: i32, fan1_rpm: i32, fan2_rpm: i32, fan3_rpm: i32) {
+        if self.temperature_history.len() >= CHART_HISTORY_SIZE {
+            self.temperature_history.pop_front();
+        }
+        self.temperature_history.push_back(temp);
+        
+        if self.fan1_rpm_history.len() >= CHART_HISTORY_SIZE {
+            self.fan1_rpm_history.pop_front();
+        }
+        self.fan1_rpm_history.push_back(fan1_rpm);
+        
+        if self.fan2_rpm_history.len() >= CHART_HISTORY_SIZE {
+            self.fan2_rpm_history.pop_front();
+        }
+        self.fan2_rpm_history.push_back(fan2_rpm);
+        
+        if self.fan3_rpm_history.len() >= CHART_HISTORY_SIZE {
+            self.fan3_rpm_history.pop_front();
+        }
+        self.fan3_rpm_history.push_back(fan3_rpm);
     }
 }
 
@@ -166,6 +211,7 @@ struct AppState {
     edit_state: EditState,
     cog_icon: Option<egui::TextureHandle>,
     check_icon: Option<egui::TextureHandle>,
+    chart_data: ChartData,
 }
 
 impl AppState {
@@ -182,6 +228,7 @@ impl AppState {
             edit_state: EditState::default(),
             cog_icon: None,
             check_icon: None,
+            chart_data: ChartData::new(),
         }
     }
 
@@ -342,6 +389,14 @@ impl EcMonitorApp {
                     let mut state_guard = state.lock().unwrap();
                     match result {
                         Ok(metrics) => {
+                            // Add to chart data history
+                            state_guard.chart_data.add_data_point(
+                                metrics.temperature,
+                                metrics.fan1.rpm,
+                                metrics.fan2.rpm,
+                                metrics.fan3.rpm,
+                            );
+                            
                             state_guard.metrics = Some(metrics);
                             state_guard.last_update = Some(Instant::now());
                             // Don't clear error messages here - let them expire naturally after 5 seconds
@@ -368,8 +423,76 @@ impl EcMonitorApp {
         }
     }
 
+    fn draw_bar_chart(
+        &self,
+        ui: &mut egui::Ui,
+        rect: egui::Rect,
+        history: &VecDeque<i32>,
+        max_value: i32,
+        color: egui::Color32,
+    ) {
+        if history.is_empty() {
+            return;
+        }
+        
+        let painter = ui.painter();
+        let num_bars = history.len();
+        
+        if num_bars == 0 {
+            return;
+        }
+        
+        // Calculate bar width based on max capacity so bars fill width when at max
+        let bar_width = rect.width() / CHART_HISTORY_SIZE as f32;
+        
+        // Calculate how many bars fit in the rect
+        let max_bars = (rect.width() / bar_width).floor() as usize;
+        
+        // Determine which bars to draw (most recent ones)
+        let start_index = if num_bars > max_bars {
+            num_bars - max_bars
+        } else {
+            0
+        };
+        
+        // Draw bars from right to left, starting with the most recent
+        for (i, &value) in history.iter().skip(start_index).enumerate() {
+            let normalized_height = (value as f32 / max_value as f32).clamp(0.0, 1.0);
+            let bar_height = rect.height() * normalized_height;
+            
+            // Position bars from left to right within available space
+            let x_offset = if num_bars <= max_bars {
+                // If we have fewer bars than max, align them to the left
+                i as f32 * bar_width
+            } else {
+                // If we have more bars, fill from left to right
+                i as f32 * bar_width
+            };
+            
+            let bar_rect = egui::Rect::from_min_max(
+                egui::pos2(
+                    rect.min.x + x_offset,
+                    rect.max.y - bar_height,
+                ),
+                egui::pos2(
+                    rect.min.x + x_offset + bar_width,
+                    rect.max.y,
+                ),
+            );
+            
+            // Draw with 10% opacity
+            let chart_color = egui::Color32::from_rgba_unmultiplied(
+                color.r(),
+                color.g(),
+                color.b(),
+                40, // 15% opacity
+            );
+            painter.rect_filled(bar_rect, 0.0, chart_color);
+        }
+    }
+
     fn draw_apu_block(&self, ui: &mut egui::Ui, metrics: &MetricsResponse, state: &mut AppState) {
-        ui.group(|ui| {
+        let response = ui.group(|ui| {
             ui.vertical(|ui| {
                 ui.horizontal(|ui| {
                     ui.heading("APU");
@@ -488,12 +611,40 @@ impl EcMonitorApp {
                         );
                     });
                 }
-            });
+            })
         });
+        
+        // Draw chart in the background after content is drawn, only if not in edit mode
+        if !state.edit_state.apu_edit_mode {
+            let mut rect = response.response.rect;
+            rect.set_width(ui.available_width());
+            self.draw_bar_chart(
+                ui,
+                rect,
+                &state.chart_data.temperature_history,
+                100, // Max temperature range 0-100
+                state.get_temp_color(metrics.temperature),
+            );
+        }
     }
 
     fn draw_fan_block_with_edit(&self, ui: &mut egui::Ui, fan_name: &str, fan_id: i32, fan: &FanMetrics, state: &mut AppState) {
-        ui.group(|ui| {
+        // Clone chart data and determine edit mode before the closure to avoid borrow issues
+        let (history_clone, max_rpm) = match fan_id {
+            1 => (state.chart_data.fan1_rpm_history.clone(), 5000),
+            2 => (state.chart_data.fan2_rpm_history.clone(), 5000),
+            3 => (state.chart_data.fan3_rpm_history.clone(), 2500),
+            _ => return, // Invalid fan_id
+        };
+        
+        let is_edit_mode = match fan_id {
+            1 => state.edit_state.fan1_edit_mode,
+            2 => state.edit_state.fan2_edit_mode,
+            3 => state.edit_state.fan3_edit_mode,
+            _ => false,
+        };
+        
+        let response = ui.group(|ui| {
             ui.vertical(|ui| {
                 ui.horizontal(|ui| {
                     ui.heading(fan_name);
@@ -885,12 +1036,25 @@ impl EcMonitorApp {
                         ui.horizontal(|ui| {
                             ui.label("Ramp-Down:");
                             ui.label(format!("{:?}", fan.rampdown_curve));
-                        });
-                    }
-                }
-            });
-        });
-    }
+                       });
+                   }
+               }
+           })
+       });
+       
+       // Draw chart in the background after content is drawn, only if not in edit mode
+       if !is_edit_mode {
+           let mut rect = response.response.rect;
+           rect.set_width(ui.available_width());
+           self.draw_bar_chart(
+               ui,
+               rect,
+               &history_clone,
+               max_rpm,
+               state.get_rpm_color(fan.rpm),
+           );
+       }
+   }
 }
 
 impl eframe::App for EcMonitorApp {
@@ -918,7 +1082,7 @@ impl eframe::App for EcMonitorApp {
             // EC Firmware version
             if let Some(version) = &state.ec_version {
                 ui.horizontal(|ui| {
-                    ui.label("EC FW ver:");
+                    ui.label("EC firmware version:");
                     ui.label(version);
                 });
                 ui.separator();
