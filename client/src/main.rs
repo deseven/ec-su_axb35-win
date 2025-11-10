@@ -147,9 +147,9 @@ impl Default for ColorThresholds {
     fn default() -> Self {
         Self {
             temp_green: 50,
-            temp_yellow: 80,
-            rpm_green: 1200,
-            rpm_yellow: 2600,
+            temp_yellow: 85,
+            rpm_green: 1250,
+            rpm_yellow: 2500,
         }
     }
 }

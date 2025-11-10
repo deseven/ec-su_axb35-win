@@ -1,7 +1,7 @@
 ; ec-su_axb35-win Installer
 
 !define PRODUCT_NAME "ec-su_axb35-win"
-!define PRODUCT_VERSION "1.1.1"
+!define PRODUCT_VERSION "1.2.0"
 !define PRODUCT_PUBLISHER "deseven"
 !define PRODUCT_WEB_SITE "https://github.com/deseven/ec-su_axb35-win"
 !define PRODUCT_DIR_REGKEY "Software\Microsoft\Windows\CurrentVersion\App Paths\ec-su_axb35-server.exe"
