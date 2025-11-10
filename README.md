@@ -1,4 +1,4 @@
-# ec-su_abx35-win
+# ec-su_axb35-win
 
 A Windows control & monitoring solution for the onboard Embedded Controller (EC) on [Sixunited's SU_AXB35 boards](https://strixhalo-homelab.d7.wtf/Hardware/Boards/Sixunited-AXB35). A distant relative of [ec-su_axb35-linux](https://github.com/cmetz/ec-su_axb35-linux), consists of a server and a GUI client. The latest stable version is always available in [Releases](https://github.com/deseven/ec-su_axb35-win/releases).
 
@@ -107,10 +107,10 @@ The curve fan mode provides automatic fan speed control based on APU temperature
 There are a couple of PoSh scripts available in `%SYSTEMDRIVE%\ProgramData\ec-su_axb35-win\scripts`. Use them to quickly test metrics output and fan levels.
 
 
-## Building and Running (server)
+## Building and Running
 
 1. Ensure you have Rust installed and you can build a simple "hello world" app.
-2. Build the project:
+2. Build the project (from server or client dir):
    ```bash
    cargo build --release
    ```
