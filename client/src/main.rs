@@ -299,6 +299,7 @@ struct EcMonitorApp {
     state: Arc<Mutex<AppState>>,
     metrics_task: Option<tokio::task::JoinHandle<()>>,
     window_configured: bool,
+    last_content_height: f32,
 }
 
 impl EcMonitorApp {
@@ -307,6 +308,7 @@ impl EcMonitorApp {
             state,
             metrics_task: None,
             window_configured: false,
+            last_content_height: 0.0,
         }
     }
 
@@ -789,6 +791,7 @@ impl EcMonitorApp {
                                     ui.label("Ramp-Down:");
                                     ui.text_edit_singleline(&mut state.edit_state.temp_fan1_rampdown);
                                 });
+                                ui.label(egui::RichText::new("Hint: 5 temperature thresholds (°C) that trigger fan level increases (Ramp-Up) or decreases (Ramp-Down), comma separated.").weak());
                             }
                         }
                         2 => {
@@ -819,6 +822,7 @@ impl EcMonitorApp {
                                     ui.label("Ramp-Down:");
                                     ui.text_edit_singleline(&mut state.edit_state.temp_fan2_rampdown);
                                 });
+                                ui.label(egui::RichText::new("Hint: 5 temperature thresholds (°C) that trigger fan level increases (Ramp-Up) or decreases (Ramp-Down), comma separated.").weak());
                             }
                         }
                         3 => {
@@ -849,6 +853,7 @@ impl EcMonitorApp {
                                     ui.label("Ramp-Down:");
                                     ui.text_edit_singleline(&mut state.edit_state.temp_fan3_rampdown);
                                 });
+                                ui.label(egui::RichText::new("Hint: 5 temperature thresholds (°C) that trigger fan level increases (Ramp-Up) or decreases (Ramp-Down), comma separated.").weak());
                             }
                         }
                         _ => {}
@@ -890,43 +895,11 @@ impl EcMonitorApp {
 
 impl eframe::App for EcMonitorApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        // Configure window size and position on first update
-        if !self.window_configured {
-            let window_size = egui::Vec2::new(400.0, 600.0);
-            
-            // Get screen dimensions
-            let screen_size = {
-                #[cfg(windows)]
-                {
-                    use winapi::um::winuser::{GetSystemMetrics, SM_CXSCREEN, SM_CYSCREEN};
-                    unsafe {
-                        let width = GetSystemMetrics(SM_CXSCREEN) as f32;
-                        let height = GetSystemMetrics(SM_CYSCREEN) as f32;
-                        [width, height]
-                    }
-                }
-                #[cfg(not(windows))]
-                {
-                    [1920.0, 1080.0] // Default fallback
-                }
-            };
-            
-            // Calculate center position
-            let center_x = (screen_size[0] - window_size.x) / 2.0;
-            let center_y = (screen_size[1] - window_size.y) / 2.0;
-            let window_pos = egui::Pos2::new(center_x, center_y);
-            
-            // Set viewport properties
-            ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(window_size));
-            ctx.send_viewport_cmd(egui::ViewportCommand::OuterPosition(window_pos));
-            ctx.send_viewport_cmd(egui::ViewportCommand::Resizable(false));
-            
-            self.window_configured = true;
-        }
-
         // Start metrics polling when the app starts
         self.start_metrics_polling();
 
+        let mut content_height = 0.0;
+        
         egui::CentralPanel::default().show(ctx, |ui| {
             // Load icons first
             {
@@ -938,6 +911,9 @@ impl eframe::App for EcMonitorApp {
 
             // Clear old error messages
             state.clear_old_error();
+
+            // Track the starting position
+            let start_y = ui.cursor().top();
 
             // EC Firmware version
             if let Some(version) = &state.ec_version {
@@ -969,7 +945,57 @@ impl eframe::App for EcMonitorApp {
             } else {
                 ui.label("Loading metrics...");
             }
+
+            // Calculate content height
+            let end_y = ui.cursor().top();
+            content_height = end_y - start_y + 15.0; // Add some padding
         });
+
+        // Configure window size and position
+        let window_width = 400.0;
+        let min_height = 200.0;
+        let max_height = 800.0;
+        
+        // Clamp the content height to reasonable bounds
+        let target_height = content_height.max(min_height).min(max_height);
+        
+        // Only update window size if content height changed significantly (avoid constant resizing)
+        if !self.window_configured || (target_height - self.last_content_height).abs() > 5.0 {
+            let window_size = egui::Vec2::new(window_width, target_height);
+            
+            // Get screen dimensions for centering
+            let screen_size = {
+                #[cfg(windows)]
+                {
+                    use winapi::um::winuser::{GetSystemMetrics, SM_CXSCREEN, SM_CYSCREEN};
+                    unsafe {
+                        let width = GetSystemMetrics(SM_CXSCREEN) as f32;
+                        let height = GetSystemMetrics(SM_CYSCREEN) as f32;
+                        [width, height]
+                    }
+                }
+                #[cfg(not(windows))]
+                {
+                    [1920.0, 1080.0] // Default fallback
+                }
+            };
+            
+            // Calculate center position
+            let center_x = (screen_size[0] - window_size.x) / 2.0;
+            let center_y = (screen_size[1] - window_size.y) / 2.0;
+            let window_pos = egui::Pos2::new(center_x, center_y);
+            
+            // Set viewport properties
+            ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(window_size));
+            if !self.window_configured {
+                // Only set position on first configuration to avoid jumping
+                ctx.send_viewport_cmd(egui::ViewportCommand::OuterPosition(window_pos));
+            }
+            ctx.send_viewport_cmd(egui::ViewportCommand::Resizable(false));
+            
+            self.last_content_height = target_height;
+            self.window_configured = true;
+        }
 
         // Request repaint every second to update metrics
         ctx.request_repaint_after(Duration::from_secs(1));
