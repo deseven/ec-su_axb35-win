@@ -1,6 +1,6 @@
 # ec-su_axb35-win
 
-A Windows control & monitoring solution for the onboard Embedded Controller (EC) on [Sixunited's SU_AXB35 boards](https://strixhalo-homelab.d7.wtf/Hardware/Boards/Sixunited-AXB35). A distant relative of [ec-su_axb35-linux](https://github.com/cmetz/ec-su_axb35-linux), consists of a server and a GUI client. The latest stable version is always available in [Releases](https://github.com/deseven/ec-su_axb35-win/releases).
+A Windows control & monitoring solution for the onboard Embedded Controller (ITE IT5570E) on [Sixunited's SU_AXB35 boards](https://strixhalo-homelab.d7.wtf/Hardware/Boards/Sixunited-AXB35). A distant relative of [ec-su_axb35-linux](https://github.com/cmetz/ec-su_axb35-linux), consists of a server and a GUI client. The latest stable version is always available in [Releases](https://github.com/deseven/ec-su_axb35-win/releases).
 
 The whole thing would've been impossible without the work done in [NoteBook FanControl](https://github.com/hirschmann/nbfc) and [WinRing0 library](https://github.com/GermanAizek/WinRing0).
 
