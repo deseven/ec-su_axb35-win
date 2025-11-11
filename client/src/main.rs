@@ -107,6 +107,21 @@ struct EditState {
     temp_fan3_rampdown: String,
 }
 
+impl EditState {
+    fn is_any_other_edit_mode_active_except_apu(&self) -> bool {
+        self.fan1_edit_mode || self.fan2_edit_mode || self.fan3_edit_mode
+    }
+    
+    fn is_any_other_edit_mode_active_except_fan(&self, fan_id: i32) -> bool {
+        match fan_id {
+            1 => self.apu_edit_mode || self.fan2_edit_mode || self.fan3_edit_mode,
+            2 => self.apu_edit_mode || self.fan1_edit_mode || self.fan3_edit_mode,
+            3 => self.apu_edit_mode || self.fan1_edit_mode || self.fan2_edit_mode,
+            _ => false,
+        }
+    }
+}
+
 impl Default for EditState {
     fn default() -> Self {
         Self {
@@ -497,10 +512,13 @@ impl EcMonitorApp {
                 ui.horizontal(|ui| {
                     ui.heading("APU");
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        // Only show button if this block is in edit mode OR no other block is in edit mode
+                        let can_show_button = state.edit_state.apu_edit_mode || !state.edit_state.is_any_other_edit_mode_active_except_apu();
+                        
                         if state.edit_state.apu_applying {
                             // Show spinner while applying
                             ui.add(egui::Spinner::new());
-                        } else {
+                        } else if can_show_button {
                             let icon = if state.edit_state.apu_edit_mode {
                                 &state.check_icon
                             } else {
@@ -663,10 +681,13 @@ impl EcMonitorApp {
                             _ => false,
                         };
                         
+                        // Only show button if this block is in edit mode OR no other block is in edit mode
+                        let can_show_button = is_edit_mode || !state.edit_state.is_any_other_edit_mode_active_except_fan(fan_id);
+                        
                         if is_applying {
                             // Show spinner while applying
                             ui.add(egui::Spinner::new());
-                        } else {
+                        } else if can_show_button {
                             let icon = if is_edit_mode {
                                 &state.check_icon
                             } else {
