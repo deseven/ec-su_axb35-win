@@ -1,0 +1,40 @@
+[package]
+name = "ec-su_axb35-win-tray"
+version = "1.1.0"
+edition = "2021"
+build = "build.rs"
+
+[dependencies]
+# System tray and windowing
+tray-icon = "0.14"
+winit = { version = "0.30", features = ["rwh_06"] }
+
+# Async HTTP client
+reqwest = { version = "0.12", features = ["json"] }
+tokio = { version = "1.0", features = ["rt-multi-thread", "time", "sync"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Image processing for dynamic icons
+image = "0.25"
+imageproc = "0.25"
+rusttype = "0.9"
+
+# Utilities
+dirs = "5.0"
+anyhow = "1.0"
+
+# Windows-specific
+[target.'cfg(windows)'.dependencies]
+winapi = { version = "0.3", features = ["winuser", "shellapi", "synchapi", "handleapi", "errhandlingapi", "winerror"] }
+winreg = "0.52"
+
+[build-dependencies]
+winres = "0.1"
+
+[profile.release]
+opt-level = "z"
+lto = true
+strip = true
