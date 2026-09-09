@@ -110,6 +110,18 @@ Function KillExistingClientProcess
   ${EndIf}
 FunctionEnd
 
+Function KillExistingTrayProcess
+  DetailPrint "Checking for existing tray monitor process..."
+  
+  ; Kill any running tray monitor processes
+  nsExec::ExecToLog 'taskkill /F /IM ec-su_axb35-win-tray.exe'
+  Pop $0
+  ${If} $0 == 0
+    DetailPrint "Existing tray monitor process terminated"
+    Sleep 1000 ; Wait 1 second
+  ${EndIf}
+FunctionEnd
+
 Function CreateOrUpdateAndStartService
   DetailPrint "Creating or updating service..."
   
@@ -156,6 +168,9 @@ Section "MainSection" SEC01
   ; Kill existing client process if running
   Call KillExistingClientProcess
   
+  ; Kill existing tray monitor process if running
+  Call KillExistingTrayProcess
+  
   ; Create installation directory
   SetOutPath "$INSTDIR"
   SetOverwrite ifnewer
@@ -167,6 +182,10 @@ Section "MainSection" SEC01
   ; Install client binary
   DetailPrint "Installing client binary..."
   File "client\target\release\ec-su_axb35-win-client.exe"
+  
+  ; Install tray monitor binary
+  DetailPrint "Installing tray monitor binary..."
+  File "tray-monitor\target\release\ec-su_axb35-win-tray.exe"
   
   ; Create winring0 directory and install files
   DetailPrint "Installing WinRing0 drivers..."
@@ -195,8 +214,16 @@ Section -AdditionalIcons
   WriteIniStr "$INSTDIR\${PRODUCT_NAME}.url" "InternetShortcut" "URL" "${PRODUCT_WEB_SITE}"
   CreateDirectory "$SMPROGRAMS\${PRODUCT_NAME}"
   CreateShortCut "$SMPROGRAMS\${PRODUCT_NAME}\EC SU_AXB35 Client.lnk" "$INSTDIR\ec-su_axb35-win-client.exe"
+  CreateShortCut "$SMPROGRAMS\${PRODUCT_NAME}\EC SU_AXB35 Tray Monitor.lnk" "$INSTDIR\ec-su_axb35-win-tray.exe"
   CreateShortCut "$SMPROGRAMS\${PRODUCT_NAME}\Website.lnk" "$INSTDIR\${PRODUCT_NAME}.url"
   CreateShortCut "$SMPROGRAMS\${PRODUCT_NAME}\Uninstall.lnk" "$INSTDIR\uninst.exe"
+  
+  ; Add tray monitor to auto-start (current user context for auto-start)
+  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "ec-su_axb35-win-tray" "$INSTDIR\ec-su_axb35-win-tray.exe"
+  
+  ; Start tray monitor
+  DetailPrint "Starting tray monitor..."
+  Exec '"$INSTDIR\ec-su_axb35-win-tray.exe"'
 SectionEnd
 
 Section -Post
@@ -245,11 +272,19 @@ Section Uninstall
   nsExec::ExecToLog 'taskkill /F /IM ec-su_axb35-win-client.exe'
   Sleep 1000
   
+  ; Kill tray monitor process if running before uninstall
+  nsExec::ExecToLog 'taskkill /F /IM ec-su_axb35-win-tray.exe'
+  Sleep 1000
+  
+  ; Remove tray monitor auto-start registry entry
+  DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "ec-su_axb35-win-tray"
+  
   ; Remove files
   Delete "$INSTDIR\${PRODUCT_NAME}.url"
   Delete "$INSTDIR\uninst.exe"
   Delete "$INSTDIR\ec-su_axb35-server.exe"
   Delete "$INSTDIR\ec-su_axb35-win-client.exe"
+  Delete "$INSTDIR\ec-su_axb35-win-tray.exe"
   
   ; Remove winring0 files
   Delete "$APPDATA\ec-su_axb35-win\winring0\WinRing0.sys"
@@ -265,6 +300,7 @@ Section Uninstall
   
   ; Remove shortcuts
   Delete "$SMPROGRAMS\${PRODUCT_NAME}\EC SU_AXB35 Client.lnk"
+  Delete "$SMPROGRAMS\${PRODUCT_NAME}\EC SU_AXB35 Tray Monitor.lnk"
   Delete "$SMPROGRAMS\${PRODUCT_NAME}\Uninstall.lnk"
   Delete "$SMPROGRAMS\${PRODUCT_NAME}\Website.lnk"
   RMDir "$SMPROGRAMS\${PRODUCT_NAME}"
